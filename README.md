@@ -302,6 +302,7 @@ novera/
 │   ├── ci.yml                  # Go vet, race detection, unit/fuzz tests
 │   └── publish.yml             # Multi-arch GHCR image publishing & binary releases
 ├── ARCHITECTURE.md             # Complete architectural reference
+├── ACCESSIBILITY.md            # Accessibility standards & interface compliance
 ├── CONTRIBUTING.md             # Developer guidelines & commit standards
 ├── SECURITY.md                 # Vulnerability reporting & security policy
 ├── GOVERNANCE.md               # Project governance & RFC lifecycle
