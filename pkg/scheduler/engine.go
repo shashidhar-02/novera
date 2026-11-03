@@ -123,7 +123,7 @@ func (e *Engine) Schedule(ctx context.Context, w *model.Workload, nodes map[stri
 	// 2. SCORE PHASE
 	for _, n := range candidates {
 		cs := e.scoreNode(w, n, now)
-		decision.CandidateScores = append(decision, cs)
+		decision.CandidateScores = append(decision.CandidateScores, cs)
 	}
 
 	// Sort candidates by total score descending; tie-break deterministically by NodeID ascending
