@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Unit & Race Detection
+    name: Unit, Concurrency & Fuzz Smoke
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -33,12 +33,33 @@ jobs:
             exit 1
           fi
 
-      - name: Run Go Unit Tests with Race Detector
+      - name: Vet All Packages
+        run: go vet ./...
+
+      - name: Run Go Unit & Concurrency Tests with Race Detector
         run: go test -v -race -coverprofile=coverage.txt ./...
 
+      - name: Build All ASTRA Binaries
+        run: |
+          go build -v -o bin/astra ./cmd/astra
+          go build -v -o bin/astra-scheduler ./cmd/astra-scheduler
+          go build -v -o bin/astra-agent ./cmd/astra-agent
+          go build -v -o bin/simulator ./cmd/simulator
+
+      - name: Test Operator CLI
+        run: |
+          ./bin/astra status
+          ./bin/astra node status
+          ./bin/astra scheduler status
+          ./bin/astra decision explain
+          ./bin/astra policy validate
+          ./bin/astra debug bundle
+
       - name: Run Deterministic Simulator Benchmark Smoke
-        run: go run ./cmd/simulator --seed 42 --nodes 6 --workloads 40
+        run: ./bin/simulator --seed 42 --nodes 6 --workloads 40
 
       - name: Run Mathematical Dual-Engine Model Cross-Check
         run: python scripts/verify_model.py
 
+      - name: Run Multi-Seed Benchmark Suite
+        run: python benchmark/runner.py

@@ -24,3 +24,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remediated division-by-zero on nodes with zero capacity.
 - Remediated future clock-skew telemetry staleness check bypass.
 - Added `sync.RWMutex` to `model.Node` to ensure thread-safe concurrent scheduling and allocation.
+

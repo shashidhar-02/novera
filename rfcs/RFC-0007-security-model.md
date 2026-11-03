@@ -24,3 +24,4 @@
 - **SLSA v1.2:** Build provenance and isolated builds targeting SLSA Build Level 2.
 - **Sigstore / Cosign:** Keyless container image signing and transparency logging.
 - **OpenSSF Scorecard:** Automated code analysis, branch protection, and vulnerability disclosure.
+

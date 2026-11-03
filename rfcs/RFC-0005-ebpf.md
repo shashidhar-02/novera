@@ -29,3 +29,4 @@ User-space agents cannot measure sub-millisecond thread scheduling latency witho
 | **Linux 5.8+ with BTF** | `CAP_BPF` + `CAP_PERFMON` | Primary high-resolution eBPF mode. |
 | **Linux < 5.8 or No BTF** | Virtual filesystem access only | Graceful fallback to `/proc/pressure` (PSI); eBPF disabled. |
 | **Ring Buffer Overflow** | Non-blocking drop | Clean drop counter increment; zero kernel hang. |
+

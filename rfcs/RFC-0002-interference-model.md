@@ -52,3 +52,4 @@ Where $\mathcal{M}$ is the empirical penalty matrix:
 
 - **Nil & Boundary Safety:** Evaluating `nil` workloads, `nil` nodes, or unclassified tasks yields `0.0` penalty with a diagnostic reason, preventing scheduler crashes.
 - **Explainability:** For every evaluated node, the model emits explicit human-readable reasons (e.g. `"high contention risk: co-locating LatencySensitive with ThroughputBatch"`).
+

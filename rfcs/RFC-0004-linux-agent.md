@@ -34,3 +34,4 @@ ASTRA's Node Agent reads kernel state directly from `/proc/pressure` and `/sys/f
 - **Non-Root Execution:** Runs as UID `10001` (`astra-agent`).
 - **Read-Only Virtual FS:** Mounts `/sys/fs/cgroup` and `/proc/pressure` with `readOnly: true`.
 - **Capability Bounding:** Drops all Linux capabilities (`CAP_SYS_ADMIN` rejected).
+

@@ -50,3 +50,4 @@ $$S(N, W) \leftarrow \frac{w_{\text{cap}} \cdot S_{\text{cap}} + w_{\text{interf
 - **Context Cancellation:** Synchronously honors `ctx.Err()` at every phase.
 - **Deterministic Tie-Breaking:** When candidate total scores differ by $\le 0.0001$, nodes are ordered alphabetically by `NodeID`.
 - **Thread Safety:** Pure re-entrant execution; no mutable state shared across concurrent `Schedule` invocations.
+

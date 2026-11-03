@@ -87,3 +87,4 @@ func (c *Collector) CollectOnce(ctx context.Context, runqueueLatencyP99Us float6
 
 	return telemetry, nil
 }
+

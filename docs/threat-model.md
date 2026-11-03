@@ -51,3 +51,4 @@
 | **Information Disclosure** | Leakage of sensitive pod data via telemetry. | Workload metadata extracted from BPF ring buffer. | Telemetry only records opaque `cgroup_id` and runqueue latency microseconds; zero application payload or memory access. | Negligible |
 | **Denial of Service** | Event flood exhausts scheduler memory. | Rapid context-switch cycling floods eBPF ring buffer. | Ring buffer is strictly memory-bounded ($256\text{KB}$); drops events cleanly via `bpf_ringbuf_reserve` failure handling. | Low |
 | **Elevation of Privilege** | Container breakout to host kernel. | Exploit in agent container seeks root on host. | Container runs as non-root (UID 10001), drops all capabilities, adds only `CAP_BPF` + `CAP_PERFMON`; `allowPrivilegeEscalation: false`. | Negligible |
+

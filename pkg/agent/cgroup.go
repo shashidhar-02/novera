@@ -109,3 +109,4 @@ func ParseCPUStat(r io.Reader) (CgroupCPUStat, error) {
 
 	return stat, scanner.Err()
 }
+

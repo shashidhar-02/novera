@@ -32,3 +32,4 @@ ASTRA maps its core algorithms to standard extension points:
   - `networkpolicy.yaml`: Default-deny ingress/egress with explicit DNS and API server rules.
   - `scheduler-deployment.yaml`: Pod Security Standards: Restricted compliant deployment.
   - `node-agent-daemonset.yaml`: Hardened DaemonSet with minimal `CAP_BPF` and `CAP_PERFMON`.
+

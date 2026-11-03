@@ -156,36 +156,76 @@ Outcome: ASTRA reduced SLO violations by 78.6%
 ```text
 astra/
 ├── cmd/
-│   └── simulator/            # CLI simulator entrypoint
+│   ├── astra/                # Operator diagnostics & triage CLI
+│   ├── astra-scheduler/      # Control-plane daemon with HTTP health probes
+│   ├── astra-agent/          # Linux node telemetry daemon
+│   └── simulator/            # Deterministic simulation CLI entrypoint
 ├── pkg/
-│   ├── model/                # Core types (Workload, Node, Telemetry, PSI)
-│   ├── interference/         # Empirical interference matrix & affinity models
-│   ├── scheduler/            # Filter & score engine, tie-breaking, explainability
+│   ├── model/                # Core types (Workload, Node, Telemetry, PSI) + RWMutex
+│   ├── interference/         # Empirical cross-class contention matrix
+│   ├── scheduler/            # Filter & score engine with clock-skew fallback
+│   ├── agent/                # Linux PSI & cgroups v2 telemetry collectors
+│   ├── coordination/         # Active-standby leader election via Kubernetes Leases
 │   └── simulator/            # Deterministic cluster simulation engine
-├── artifacts/
-│   ├── repository-assessment.md  # Host assessment & toolchain roadmap
-│   └── prior-art.md              # Academic and cloud-native systems literature review
+├── ebpf/
+│   ├── sched_switch.bpf.c    # CO-RE BPF C program for sched_wakeup & sched_switch
+│   └── README.md             # eBPF verifier & capability boundaries
+├── deploy/kubernetes/
+│   ├── namespace.yaml        # Pod Security Admission: Restricted baseline
+│   ├── crd-workloadprofile.yaml # WorkloadProfile CRD
+│   ├── rbac.yaml             # Least-privilege ServiceAccount, Role, ClusterRole
+│   ├── networkpolicy.yaml    # Default-deny-all with explicit DNS & API server rules
+│   ├── scheduler-deployment.yaml # Hardened deployment (non-root, readOnlyRootFS)
+│   └── node-agent-daemonset.yaml # DaemonSet with CAP_BPF / CAP_PERFMON
 ├── rfcs/
-│   └── RFC-0001-architecture.md  # Formal system architecture RFC
-├── scripts/
-│   └── verify_model.py       # Cross-platform model verification harness
-├── .github/
-│   └── workflows/ci.yml      # CI lint, unit test, race detection, benchmark smoke
+│   ├── RFC-0001-architecture.md
+│   ├── RFC-0002-interference-model.md
+│   ├── RFC-0003-scheduler.md
+│   ├── RFC-0004-linux-agent.md
+│   ├── RFC-0005-ebpf.md
+│   ├── RFC-0006-kubernetes-integration.md
+│   ├── RFC-0007-security-model.md
+│   ├── RFC-0008-api-versioning.md
+│   ├── RFC-0009-ha.md
+│   └── RFC-0010-release.md
+├── docs/
+│   ├── architecture.md
+│   ├── threat-model.md
+│   ├── security-model.md
+│   ├── security-self-assessment.md
+│   ├── benchmark-plan.md
+│   ├── benchmark-report.md
+│   ├── verification-plan.md
+│   ├── final-verification-report.md
+│   ├── claim-verification.md
+│   ├── compatibility.md
+│   ├── operations.md
+│   └── troubleshooting.md
+├── ARCHITECTURE.md           # High-level architecture reference
 ├── CONTRIBUTING.md           # Engineering guidelines & RFC process
-├── SECURITY.md               # Threat model & vulnerability disclosure
+├── CODE_OF_CONDUCT.md        # Contributor Covenant 2.1
+├── SECURITY.md               # Vulnerability reporting policy
+├── GOVERNANCE.md             # Project governance & RFC lifecycle
+├── MAINTAINERS.md            # Active maintainers & review authority
+├── SUPPORT.md                # Community support channels
+├── CHANGELOG.md              # Semantic Versioning change log
 ├── LICENSE                   # Apache 2.0 License
 └── README.md
 ```
 
 ---
 
-## Documentation & RFCs
+## Documentation & RFC Suite
 
-- [Repository Assessment](artifacts/repository-assessment.md)
-- [Prior Art & Comparative Systems Analysis](artifacts/prior-art.md)
-- [RFC-0001: System Architecture](rfcs/RFC-0001-architecture.md)
-- [RFC-0002: Interference Model Specification](rfcs/RFC-0002-interference-model.md) *(Coming Soon)*
-- [RFC-0003: eBPF Telemetry Probes](rfcs/RFC-0003-ebpf-probes.md) *(Coming Soon)*
+- [Architecture Reference](ARCHITECTURE.md)
+- [RFC Index](rfcs/) (RFC-0001 through RFC-0010)
+- [Operator Runbook](docs/operations.md)
+- [Troubleshooting & Triage](docs/troubleshooting.md)
+- [Compatibility Matrix](docs/compatibility.md)
+- [Benchmark Plan & Evaluation](docs/benchmark-plan.md)
+- [Threat Model & Security Self-Assessment](docs/threat-model.md)
+- [Final Verification & Audit Report](docs/final-verification-report.md)
+- [Claim Verification Matrix](docs/claim-verification.md)
 
 ---
 

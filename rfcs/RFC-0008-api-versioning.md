@@ -22,3 +22,4 @@ ASTRA adheres strictly to **Semantic Versioning 2.0.0** (`MAJOR.MINOR.PATCH`):
 1. **No Breaking Field Removals:** Fields in public schemas (`model.Workload`, `model.NodeTelemetry`) may not be deleted or have their types modified within a minor version.
 2. **Graceful Defaulting:** Any new field added to telemetry or workload specs must be optional with deterministic zero-value fallbacks.
 3. **Explicit Validation:** All public APIs must implement `.Validate()` returning clear errors before internal processing.
+

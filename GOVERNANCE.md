@@ -20,3 +20,4 @@ All major architectural proposals (new probe types, scoring algorithms, Kubernet
 
 - RFCs require consensus among at least two maintainers before implementation begins.
 - Breaking changes must conform to [RFC-0008: API Versioning Policy](rfcs/RFC-0008-api-versioning.md).
+

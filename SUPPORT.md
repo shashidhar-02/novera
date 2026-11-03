@@ -22,3 +22,4 @@ When filing a bug report, please provide:
 ## 3. Security Inquiries
 
 Do **not** report security vulnerabilities via public issues. Refer to [`SECURITY.md`](SECURITY.md) for private reporting channels.
+

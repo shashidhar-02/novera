@@ -47,3 +47,4 @@ spec:
                     - Low
       subresources:
         status: {}
+

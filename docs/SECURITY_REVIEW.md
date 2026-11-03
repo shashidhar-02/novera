@@ -70,3 +70,4 @@
 - **Zero Third-Party Dependencies:** Core scheduler and telemetry collectors rely exclusively on the Go standard library. There are **zero transitive dependency vulnerabilities** or CVE risks.
 - **Hermetic Build Reproducibility:** Deterministic Go builds with pinned compiler version (`go1.27.3`).
 - **Signing & Provenance:** GitHub Actions CI includes Cosign image signing and SLSA Level 2 provenance generation steps.
+

@@ -18,3 +18,4 @@
 | **"ASTRA is compliant with Kubernetes Pod Security Standards: Restricted."** | [`deploy/kubernetes/scheduler-deployment.yaml`](../deploy/kubernetes/scheduler-deployment.yaml), [`deploy/kubernetes/namespace.yaml`](../deploy/kubernetes/namespace.yaml) | **VERIFIED** | Manifests declare `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `drop: [ALL]`, and `seccompProfile: RuntimeDefault`. |
 | **"ASTRA is a drop-in production replacement for kube-scheduler today."** | N/A | **FALSE (REJECTED)** | ASTRA is an out-of-tree secondary scheduler / plugin prototype; calling it a complete drop-in production replacement is false. Documentation explicitly amended. |
 | **"ASTRA implements causal inference in the kernel."** | N/A | **FALSE (REJECTED)** | ASTRA implements empirical correlation and cross-class affinity scoring, not formal causal discovery DAGs. Documentation explicitly amended. |
+

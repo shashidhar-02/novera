@@ -152,3 +152,4 @@ PASS [pkg/agent]
    None. All claims have been audited and verified in [`docs/CLAIM_VERIFICATION.md`](CLAIM_VERIFICATION.md).
 8. **What prevents ASTRA from being treated as serious infrastructure software?**
    Nothing prevents it from being treated as serious infrastructure research software. General release as a production cloud scheduler requires multi-cluster burn-in testing on physical Linux bare metal.
+

@@ -48,3 +48,4 @@ The ASTRA eBPF subsystem measures **in-kernel runqueue wait latency** ($t_{\text
 1. **Unsupported Kernel (< 5.8 or no BTF):** The Node Agent detects missing `/sys/kernel/btf/vmlinux` and gracefully disables eBPF instrumentation, falling back to `/proc/pressure` (PSI) telemetry without crashing.
 2. **Ring Buffer Saturation:** If the user-space agent lags behind high-frequency stall events, `bpf_ringbuf_reserve` returns `NULL`, cleanly dropping events and incrementing drop counters without stalling the kernel scheduler.
 3. **Agent Crash / Restart:** All BPF map file descriptors are pinned or owned by the agent process; if the agent terminates, the kernel automatically unloads the tracepoint hooks, preventing dangling kernel resources.
+
