@@ -1,6 +1,6 @@
 # ASTRA Benchmark Evaluation Report
 
-**Generated:** 2026-11-03T15:51:22.241085+00:00  
+**Generated:** 2026-11-03T16:44:47.508613+00:00  
 **Evaluation Scope:** 5 Deterministic Multi-Seed Scenarios (Seeds: [42, 101, 2024, 777, 999])  
 
 ---

@@ -21,3 +21,4 @@
 |---|---|---|---|---|
 | **Node Agent** | `hostPID: true` | Required to resolve host container processes to cgroups v2 paths. | Read-only process table visibility. | Non-root execution (UID 10001); read-only mounts; capabilities restricted to `BPF` and `PERFMON`. |
 | **Node Agent** | `CAP_BPF` + `CAP_PERFMON` | Required to load eBPF tracepoint programs on Linux 5.8+. | Ability to attach tracing probes. | Verifier enforces bounded execution; maps bounded to $< 8\text{MB}$; read-only tracepoints. |
+

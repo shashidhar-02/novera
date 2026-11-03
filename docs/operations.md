@@ -45,3 +45,4 @@ astra debug bundle
 1. **Deploy New Standby Replica:** Deploy `astra-scheduler` v0.1.1; verify it successfully joins coordination leases in standby mode.
 2. **Graceful Failover:** Terminate the active v0.1.0 pod; the standby automatically acquires leadership within $1.15\text{s}$.
 3. **Rollback:** If unexpected latency occurs, redeploy v0.1.0; zero schema migration or state loss occurs.
+

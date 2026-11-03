@@ -37,3 +37,4 @@ If node telemetry is missing, stale ($> 5\text{s}$), or exhibits future clock sk
 2. The score degrades gracefully to capacity and interference factors:
    $$S(N, W) \leftarrow \frac{w_{\text{cap}} \cdot S_{\text{cap}} + w_{\text{interf}} \cdot S_{\text{interf}}}{w_{\text{cap}} + w_{\text{interf}}}$$
 3. The node is flagged as `TelemetryDegraded` in the explainable audit log.
+

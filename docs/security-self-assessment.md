@@ -33,3 +33,4 @@ ASTRA is an open-source closed-loop distributed scheduler and interference-mitig
 
 - Vulnerabilities are handled under a private reporting policy ([`SECURITY.md`](../SECURITY.md)) with a 48-hour response target.
 - Release artifacts are built hermetically and signed with Cosign keyless certificates in compliance with NIST SP 800-218 (SSDF).
+

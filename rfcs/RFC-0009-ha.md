@@ -58,3 +58,4 @@ Proven in [`pkg/coordination/lease_test.go`](../pkg/coordination/lease_test.go):
 - Single-node acquisition and periodic renewal.
 - Automatic failover within $1.15\text{s}$ upon simulated primary crash.
 - 5-worker concurrent contention with strict single-leader mutual exclusion.
+

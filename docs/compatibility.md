@@ -31,3 +31,4 @@
 
 - **Go:** 1.22, 1.23, 1.24 (Tested with `go1.27.3 windows/amd64` and Linux CI).
 - **Python:** 3.10, 3.11, 3.12, 3.13, 3.14 (Verified with `Python 3.14.6`).
+

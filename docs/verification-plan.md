@@ -30,3 +30,4 @@
 3. **Adversarial Resilience:** Zero panics on `nil` parameters, negative capacities, zero resources, or clock skew.
 4. **Fuzz Stability:** Zero crashes after $> 100,000$ iterations on all virtual filesystem and JSON parsers.
 5. **Deterministic Replay:** Identical pseudo-random seeds must yield bit-exact placement decisions.
+

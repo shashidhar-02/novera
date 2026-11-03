@@ -32,3 +32,4 @@ python benchmark/runner.py
 # Execute deterministic CLI benchmark
 go run ./cmd/simulator --seed 42 --nodes 6 --workloads 40
 ```
+

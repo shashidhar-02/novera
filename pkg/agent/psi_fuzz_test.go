@@ -20,3 +20,4 @@ func FuzzParsePSILines(f *testing.F) {
 		_, _ = ParsePSILines(strings.NewReader(input))
 	})
 }
+

@@ -51,3 +51,4 @@ cosign verify-attestation \
   --type spdxjson \
   ghcr.io/astra-orchestration/astra-scheduler:v0.1.0
 ```
+

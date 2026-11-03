@@ -31,3 +31,4 @@
 - **Symptom:** Agent logs `failed to attach sched:sched_switch tracepoint: operation not permitted`.
 - **Root Cause:** Node kernel lacks `CONFIG_BPF_EVENTS=y` or container is missing `CAP_BPF` / `CAP_PERFMON`.
 - **Resolution:** The agent automatically falls back to `/proc/pressure` (PSI) mode. No operator intervention required unless eBPF runqueue histograms are mandatory.
+

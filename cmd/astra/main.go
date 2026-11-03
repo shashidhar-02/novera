@@ -204,3 +204,4 @@ func generateDebugBundle() {
 	fmt.Println(string(data))
 	fmt.Println("[+] Diagnostic bundle created. Zero secrets or tenant payload emitted.")
 }
+

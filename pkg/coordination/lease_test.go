@@ -165,3 +165,4 @@ func TestLeaderElection_Concurrency(t *testing.T) {
 		t.Fatalf("expected a leader lease to have been created")
 	}
 }
+

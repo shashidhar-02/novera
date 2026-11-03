@@ -17,3 +17,4 @@ func FuzzParseCPUStat(f *testing.F) {
 		_, _ = ParseCPUStat(strings.NewReader(input))
 	})
 }
+
