@@ -1,0 +1,43 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Unit & Race Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Go Formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go code is not formatted properly:"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: Run Go Unit Tests with Race Detector
+        run: go test -v -race -coverprofile=coverage.txt ./...
+
+      - name: Run Deterministic Simulator Benchmark Smoke
+        run: go run ./cmd/simulator --seed 42 --nodes 6 --workloads 40
+
+      - name: Run Mathematical Dual-Engine Model Cross-Check
+        run: python scripts/verify_model.py
