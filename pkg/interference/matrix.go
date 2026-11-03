@@ -47,8 +47,17 @@ func NewDefaultMatrixModel() *MatrixModel {
 }
 
 // Evaluate computes the aggregate interference score and diagnostic reasons.
+// It is fully nil-safe and handles malformed inputs gracefully.
 func (m *MatrixModel) Evaluate(incoming *model.Workload, node *model.Node) (float64, []string) {
-	if len(node.ActiveWorkloads) == 0 {
+	if incoming == nil {
+		return 0.0, []string{"nil incoming workload: zero penalty applied"}
+	}
+	if node == nil {
+		return 0.0, []string{"nil candidate node: zero penalty applied"}
+	}
+
+	activeWorkloads := node.GetActiveWorkloads()
+	if len(activeWorkloads) == 0 {
 		return 0.0, []string{"empty node: zero interference"}
 	}
 
@@ -60,15 +69,16 @@ func (m *MatrixModel) Evaluate(incoming *model.Workload, node *model.Node) (floa
 		return 0.0, []string{"unrecognized workload class: zero penalty applied"}
 	}
 
-	// Count active workload classes on this node
+	// Count active workload classes on this node using thread-safe snapshot
 	activeClassCounts := make(map[model.WorkloadClass]int)
-	for _, active := range node.ActiveWorkloads {
-		activeClassCounts[active.Class]++
+	for _, active := range activeWorkloads {
+		if active != nil {
+			activeClassCounts[active.Class]++
+		}
 	}
 
 	for class, count := range activeClassCounts {
 		if penaltyPerTask, ok := classMap[class]; ok && penaltyPerTask > 0 {
-			// Diminishing marginal penalty for multiple tasks of same class: count^0.8
 			classPenalty := penaltyPerTask * float64(count)
 			if classPenalty > 60.0 {
 				classPenalty = 60.0 // Cap individual class contribution

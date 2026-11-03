@@ -50,14 +50,14 @@ type CandidateScore struct {
 
 // PlacementDecision documents an explainable scheduling choice.
 type PlacementDecision struct {
-	WorkloadID        string                    `json:"workload_id"`
-	SelectedNodeID    string                    `json:"selected_node_id"`
-	SelectedScore     float64                   `json:"selected_score"`
-	CandidateScores   []CandidateScore          `json:"candidate_scores"`
-	FilteredNodes     map[string]string         `json:"filtered_nodes"` // NodeID -> rejection reason
-	DecidedAt         time.Time                 `json:"decided_at"`
-	TelemetryDegraded bool                      `json:"telemetry_degraded"`
-	Explanation       string                    `json:"explanation"`
+	WorkloadID        string            `json:"workload_id"`
+	SelectedNodeID    string            `json:"selected_node_id"`
+	SelectedScore     float64           `json:"selected_score"`
+	CandidateScores   []CandidateScore  `json:"candidate_scores"`
+	FilteredNodes     map[string]string `json:"filtered_nodes"` // NodeID -> rejection reason
+	DecidedAt         time.Time         `json:"decided_at"`
+	TelemetryDegraded bool              `json:"telemetry_degraded"`
+	Explanation       string            `json:"explanation"`
 }
 
 // Engine performs candidate filtering and interference-aware scoring.
@@ -66,12 +66,25 @@ type Engine struct {
 	interference interference.Model
 }
 
-// NewEngine constructs an ASTRA scheduling engine.
+// NewEngine constructs an ASTRA scheduling engine with validated, normalized weights.
 func NewEngine(cfg Config, im interference.Model) *Engine {
 	if im == nil {
 		im = interference.NewDefaultMatrixModel()
 	}
-	// Normalize weights
+	// Sanitize weights
+	if math.IsNaN(cfg.WeightCapacity) || cfg.WeightCapacity < 0 {
+		cfg.WeightCapacity = 0.30
+	}
+	if math.IsNaN(cfg.WeightPressure) || cfg.WeightPressure < 0 {
+		cfg.WeightPressure = 0.40
+	}
+	if math.IsNaN(cfg.WeightInterference) || cfg.WeightInterference < 0 {
+		cfg.WeightInterference = 0.30
+	}
+	if cfg.MaxTelemetryAge <= 0 {
+		cfg.MaxTelemetryAge = 5 * time.Second
+	}
+
 	sum := cfg.WeightCapacity + cfg.WeightPressure + cfg.WeightInterference
 	if sum <= 0 {
 		cfg = DefaultConfig()
@@ -88,7 +101,11 @@ func NewEngine(cfg Config, im interference.Model) *Engine {
 }
 
 // Schedule evaluates candidate nodes against the workload and selects the optimal node.
+// Respects context cancellation and guarantees deterministic, explainable output.
 func (e *Engine) Schedule(ctx context.Context, w *model.Workload, nodes map[string]*model.Node, now time.Time) (*PlacementDecision, error) {
+	if ctx != nil && ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	if w == nil {
 		return nil, ErrNilWorkload
 	}
@@ -108,7 +125,14 @@ func (e *Engine) Schedule(ctx context.Context, w *model.Workload, nodes map[stri
 
 	// 1. FILTER PHASE (Hard Constraints)
 	var candidates []*model.Node
-	for _, n := range nodes {
+	for nodeID, n := range nodes {
+		if ctx != nil && ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if n == nil {
+			decision.FilteredNodes[nodeID] = "node reference is nil"
+			continue
+		}
 		if reason, ok := e.filterNode(w, n); !ok {
 			decision.FilteredNodes[n.ID] = reason
 		} else {
@@ -122,14 +146,26 @@ func (e *Engine) Schedule(ctx context.Context, w *model.Workload, nodes map[stri
 
 	// 2. SCORE PHASE
 	for _, n := range candidates {
+		if ctx != nil && ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		cs := e.scoreNode(w, n, now)
 		decision.CandidateScores = append(decision.CandidateScores, cs)
 	}
 
-	// Sort candidates by total score descending; tie-break deterministically by NodeID ascending
+	// Sort candidates by total score descending; tie-break deterministically by NodeID ascending.
+	// Explicitly guards against NaN in comparison.
 	sort.Slice(decision.CandidateScores, func(i, j int) bool {
-		if math.Abs(decision.CandidateScores[i].TotalScore-decision.CandidateScores[j].TotalScore) > 0.0001 {
-			return decision.CandidateScores[i].TotalScore > decision.CandidateScores[j].TotalScore
+		sI := decision.CandidateScores[i].TotalScore
+		sJ := decision.CandidateScores[j].TotalScore
+		if math.IsNaN(sI) {
+			return false
+		}
+		if math.IsNaN(sJ) {
+			return true
+		}
+		if math.Abs(sI-sJ) > 0.0001 {
+			return sI > sJ
 		}
 		return decision.CandidateScores[i].NodeID < decision.CandidateScores[j].NodeID
 	})
@@ -146,58 +182,78 @@ func (e *Engine) Schedule(ctx context.Context, w *model.Workload, nodes map[stri
 
 // filterNode checks hard resource constraints.
 func (e *Engine) filterNode(w *model.Workload, n *model.Node) (string, bool) {
-	if n.AvailableCPU() < w.CPURequestMillis {
-		return fmt.Sprintf("insufficient CPU: requested %d m, available %d m", w.CPURequestMillis, n.AvailableCPU()), false
+	if n == nil {
+		return "node reference is nil", false
 	}
-	if n.AvailableMemory() < w.MemoryRequestBytes {
-		return fmt.Sprintf("insufficient memory: requested %d bytes, available %d bytes", w.MemoryRequestBytes, n.AvailableMemory()), false
+	if n.CPUCapacityMillis <= 0 {
+		return fmt.Sprintf("node %s has invalid CPU capacity (%d m)", n.ID, n.CPUCapacityMillis), false
+	}
+	if n.MemoryCapacityBytes <= 0 {
+		return fmt.Sprintf("node %s has invalid memory capacity (%d bytes)", n.ID, n.MemoryCapacityBytes), false
+	}
+
+	availCPU := n.AvailableCPU()
+	if availCPU < w.CPURequestMillis {
+		return fmt.Sprintf("insufficient CPU: requested %d m, available %d m", w.CPURequestMillis, availCPU), false
+	}
+
+	availMem := n.AvailableMemory()
+	if availMem < w.MemoryRequestBytes {
+		return fmt.Sprintf("insufficient memory: requested %d bytes, available %d bytes", w.MemoryRequestBytes, availMem), false
 	}
 	return "", true
 }
 
-// scoreNode computes capacity, pressure, and interference metrics.
+// scoreNode computes capacity, pressure, and interference metrics with zero-division protection.
 func (e *Engine) scoreNode(w *model.Workload, n *model.Node, now time.Time) CandidateScore {
 	var reasons []string
 
 	// 1. Capacity Score [0 - 100]
-	cpuUtil := float64(n.AllocatedCPU+w.CPURequestMillis) / float64(n.CPUCapacityMillis)
-	memUtil := float64(n.AllocatedMemory+w.MemoryRequestBytes) / float64(n.MemoryCapacityBytes)
-	avgUtil := (cpuUtil + memUtil) / 2.0
-	diffUtil := math.Abs(cpuUtil - memUtil)
-	capScore := math.Max(0.0, 100.0*(1.0-avgUtil-diffUtil*0.5))
+	capScore := 0.0
+	if n.CPUCapacityMillis > 0 && n.MemoryCapacityBytes > 0 {
+		cpuUtil := float64(n.AllocatedCPU+w.CPURequestMillis) / float64(n.CPUCapacityMillis)
+		memUtil := float64(n.AllocatedMemory+w.MemoryRequestBytes) / float64(n.MemoryCapacityBytes)
+		avgUtil := (cpuUtil + memUtil) / 2.0
+		diffUtil := math.Abs(cpuUtil - memUtil)
+		capScore = math.Max(0.0, math.Min(100.0, 100.0*(1.0-avgUtil-diffUtil*0.5)))
+	}
 
 	// 2. Pressure Score [0 - 100]
 	pressureScore := 100.0
 	telemetryDegraded := false
 
 	if n.LastTelemetry == nil || n.LastTelemetry.IsStale(now, e.cfg.MaxTelemetryAge) {
-		// Telemetry missing or stale: degrade gracefully
+		// Telemetry missing, stale, or future clock skew: degrade gracefully
 		telemetryDegraded = true
-		pressureScore = 50.0 // Neutral penalty
-		reasons = append(reasons, "telemetry stale or missing: pressure score set to neutral default (50.0)")
+		pressureScore = 50.0 // Conservative neutral default
+		reasons = append(reasons, "telemetry stale, missing, or clock-skewed: pressure score set to neutral default (50.0)")
 	} else {
-		// Calculate penalties based on PSI and runqueue latency
-		cpuPenalty := math.Min(1.0, n.LastTelemetry.CPUPressure.SomeAvg10/20.0) * 40.0
-		memPenalty := math.Min(1.0, n.LastTelemetry.MemoryPressure.SomeAvg10/15.0) * 30.0
-		runqPenalty := math.Min(1.0, n.LastTelemetry.RunqueueLatencyP99Us/10000.0) * 30.0
+		// Validate and bound raw telemetry inputs to prevent NaN or extreme values
+		cpuStall := math.Max(0.0, math.Min(100.0, n.LastTelemetry.CPUPressure.SomeAvg10))
+		memStall := math.Max(0.0, math.Min(100.0, n.LastTelemetry.MemoryPressure.SomeAvg10))
+		runqUs := math.Max(0.0, n.LastTelemetry.RunqueueLatencyP99Us)
+
+		cpuPenalty := math.Min(1.0, cpuStall/20.0) * 40.0
+		memPenalty := math.Min(1.0, memStall/15.0) * 30.0
+		runqPenalty := math.Min(1.0, runqUs/10000.0) * 30.0
 
 		totalPenalty := cpuPenalty + memPenalty + runqPenalty
-		pressureScore = math.Max(0.0, 100.0-totalPenalty)
+		pressureScore = math.Max(0.0, math.Min(100.0, 100.0-totalPenalty))
 
 		if cpuPenalty > 15.0 {
-			reasons = append(reasons, fmt.Sprintf("elevated CPU pressure: PSI some_avg10=%.2f", n.LastTelemetry.CPUPressure.SomeAvg10))
+			reasons = append(reasons, fmt.Sprintf("elevated CPU pressure: PSI some_avg10=%.2f", cpuStall))
 		}
 		if memPenalty > 10.0 {
-			reasons = append(reasons, fmt.Sprintf("elevated memory pressure: PSI some_avg10=%.2f", n.LastTelemetry.MemoryPressure.SomeAvg10))
+			reasons = append(reasons, fmt.Sprintf("elevated memory pressure: PSI some_avg10=%.2f", memStall))
 		}
 		if runqPenalty > 10.0 {
-			reasons = append(reasons, fmt.Sprintf("elevated runqueue latency: p99=%.1fus", n.LastTelemetry.RunqueueLatencyP99Us))
+			reasons = append(reasons, fmt.Sprintf("elevated runqueue latency: p99=%.1fus", runqUs))
 		}
 	}
 
 	// 3. Interference Score [0 - 100]
 	interfPenalty, interfReasons := e.interference.Evaluate(w, n)
-	interfScore := math.Max(0.0, 100.0-interfPenalty)
+	interfScore := math.Max(0.0, math.Min(100.0, 100.0-interfPenalty))
 	reasons = append(reasons, interfReasons...)
 
 	// Weighted Total Score
@@ -216,9 +272,13 @@ func (e *Engine) scoreNode(w *model.Workload, n *model.Node, now time.Time) Cand
 			(e.cfg.WeightInterference * interfScore)
 	}
 
+	if math.IsNaN(total) {
+		total = 0.0
+	}
+
 	return CandidateScore{
 		NodeID:            n.ID,
-		TotalScore:        total,
+		TotalScore:        math.Max(0.0, math.Min(100.0, total)),
 		CapacityScore:     capScore,
 		PressureScore:     pressureScore,
 		InterferenceScore: interfScore,

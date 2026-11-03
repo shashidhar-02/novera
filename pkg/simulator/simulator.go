@@ -333,3 +333,4 @@ func (cs *ClusterSimulator) evaluatePerformance(policy Policy, placed, rejected,
 		MaxRunqueueLatencyUs:  maxRunqUs,
 	}
 }
+

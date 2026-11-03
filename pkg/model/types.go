@@ -4,6 +4,8 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
+	"sync"
 	"time"
 )
 
@@ -40,6 +42,9 @@ type Workload struct {
 
 // Validate checks whether the workload specification is well-formed.
 func (w *Workload) Validate() error {
+	if w == nil {
+		return errors.New("workload must not be nil")
+	}
 	if w.ID == "" {
 		return errors.New("workload ID must not be empty")
 	}
@@ -53,6 +58,15 @@ func (w *Workload) Validate() error {
 	case ClassLatencySensitive, ClassThroughputBatch, ClassIOIntensive:
 	default:
 		return fmt.Errorf("unknown workload class: %s", w.Class)
+	}
+
+	if w.SLO != nil {
+		if math.IsNaN(w.SLO.TargetP99Ms) || math.IsInf(w.SLO.TargetP99Ms, 0) || w.SLO.TargetP99Ms <= 0 {
+			return fmt.Errorf("invalid SLO TargetP99Ms %.2f: must be a positive finite number", w.SLO.TargetP99Ms)
+		}
+		if math.IsNaN(w.SLO.MaxAllowedJitterMs) || math.IsInf(w.SLO.MaxAllowedJitterMs, 0) || w.SLO.MaxAllowedJitterMs < 0 {
+			return fmt.Errorf("invalid SLO MaxAllowedJitterMs %.2f: must be a non-negative finite number", w.SLO.MaxAllowedJitterMs)
+		}
 	}
 	return nil
 }
@@ -77,24 +91,34 @@ type NodeTelemetry struct {
 	CFSThrottledRatio    float64     `json:"cfs_throttled_ratio"`     // [0.0 - 1.0]
 }
 
-// IsStale returns true if telemetry is older than the maxAllowedDuration.
+// IsStale returns true if telemetry is older than the maxAllowedDuration,
+// uninitialized, or exhibits unacceptable clock skew (future timestamp).
 func (t *NodeTelemetry) IsStale(now time.Time, maxAllowedDuration time.Duration) bool {
-	if t == nil {
+	if t == nil || t.CollectedAt.IsZero() {
 		return true
 	}
-	return now.Sub(t.CollectedAt) > maxAllowedDuration
+	// Past staleness
+	if now.Sub(t.CollectedAt) > maxAllowedDuration {
+		return true
+	}
+	// Future timestamp clock skew protection
+	if t.CollectedAt.Sub(now) > maxAllowedDuration {
+		return true
+	}
+	return false
 }
 
 // Node represents physical or virtual host capacity and current state.
 type Node struct {
-	ID                  string            `json:"id"`
-	CPUCapacityMillis   int64             `json:"cpu_capacity_millis"`
-	MemoryCapacityBytes int64             `json:"memory_capacity_bytes"`
-	AllocatedCPU        int64             `json:"allocated_cpu"`
-	AllocatedMemory     int64             `json:"allocated_memory"`
+	mu                  sync.RWMutex
+	ID                  string               `json:"id"`
+	CPUCapacityMillis   int64                `json:"cpu_capacity_millis"`
+	MemoryCapacityBytes int64                `json:"memory_capacity_bytes"`
+	AllocatedCPU        int64                `json:"allocated_cpu"`
+	AllocatedMemory     int64                `json:"allocated_memory"`
 	ActiveWorkloads     map[string]*Workload `json:"active_workloads"`
-	LastTelemetry       *NodeTelemetry    `json:"last_telemetry,omitempty"`
-	Labels              map[string]string `json:"labels,omitempty"`
+	LastTelemetry       *NodeTelemetry       `json:"last_telemetry,omitempty"`
+	Labels              map[string]string    `json:"labels,omitempty"`
 }
 
 // NewNode initializes a clean Node instance.
@@ -108,8 +132,10 @@ func NewNode(id string, cpuMillis int64, memoryBytes int64) *Node {
 	}
 }
 
-// AvailableCPU returns unallocated CPU in millicores.
+// AvailableCPU returns unallocated CPU in millicores. Thread-safe.
 func (n *Node) AvailableCPU() int64 {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	avail := n.CPUCapacityMillis - n.AllocatedCPU
 	if avail < 0 {
 		return 0
@@ -117,8 +143,10 @@ func (n *Node) AvailableCPU() int64 {
 	return avail
 }
 
-// AvailableMemory returns unallocated memory in bytes.
+// AvailableMemory returns unallocated memory in bytes. Thread-safe.
 func (n *Node) AvailableMemory() int64 {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	avail := n.MemoryCapacityBytes - n.AllocatedMemory
 	if avail < 0 {
 		return 0
@@ -126,25 +154,76 @@ func (n *Node) AvailableMemory() int64 {
 	return avail
 }
 
-// AssignWorkload binds a workload to this node, updating allocated resources.
+// AssignWorkload binds a workload to this node, updating allocated resources. Thread-safe.
 func (n *Node) AssignWorkload(w *Workload) error {
-	if n.AvailableCPU() < w.CPURequestMillis {
-		return fmt.Errorf("insufficient CPU on node %s: requested %d, available %d", n.ID, w.CPURequestMillis, n.AvailableCPU())
+	if n == nil {
+		return errors.New("node cannot be nil")
 	}
-	if n.AvailableMemory() < w.MemoryRequestBytes {
-		return fmt.Errorf("insufficient memory on node %s: requested %d, available %d", n.ID, w.MemoryRequestBytes, n.AvailableMemory())
+	if w == nil {
+		return errors.New("workload cannot be nil")
 	}
+	if err := w.Validate(); err != nil {
+		return fmt.Errorf("invalid workload: %w", err)
+	}
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	// Guard against duplicate assignment resource leak
+	if _, exists := n.ActiveWorkloads[w.ID]; exists {
+		return fmt.Errorf("workload %s is already assigned to node %s", w.ID, n.ID)
+	}
+
+	availCPU := n.CPUCapacityMillis - n.AllocatedCPU
+	if availCPU < w.CPURequestMillis {
+		return fmt.Errorf("insufficient CPU on node %s: requested %d m, available %d m", n.ID, w.CPURequestMillis, availCPU)
+	}
+
+	availMem := n.MemoryCapacityBytes - n.AllocatedMemory
+	if availMem < w.MemoryRequestBytes {
+		return fmt.Errorf("insufficient memory on node %s: requested %d bytes, available %d bytes", n.ID, w.MemoryRequestBytes, availMem)
+	}
+
 	n.AllocatedCPU += w.CPURequestMillis
 	n.AllocatedMemory += w.MemoryRequestBytes
 	n.ActiveWorkloads[w.ID] = w
 	return nil
 }
 
-// RemoveWorkload unbinds a workload from this node.
+// RemoveWorkload unbinds a workload from this node. Thread-safe.
 func (n *Node) RemoveWorkload(workloadID string) {
+	if n == nil || workloadID == "" {
+		return
+	}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	if w, ok := n.ActiveWorkloads[workloadID]; ok {
 		n.AllocatedCPU -= w.CPURequestMillis
 		n.AllocatedMemory -= w.MemoryRequestBytes
+		if n.AllocatedCPU < 0 {
+			n.AllocatedCPU = 0
+		}
+		if n.AllocatedMemory < 0 {
+			n.AllocatedMemory = 0
+		}
 		delete(n.ActiveWorkloads, workloadID)
 	}
+}
+
+// GetActiveWorkloads returns a snapshot copy of active workloads for safe concurrent reads.
+func (n *Node) GetActiveWorkloads() []*Workload {
+	if n == nil {
+		return nil
+	}
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	workloads := make([]*Workload, 0, len(n.ActiveWorkloads))
+	for _, w := range n.ActiveWorkloads {
+		if w != nil {
+			workloads = append(workloads, w)
+		}
+	}
+	return workloads
 }

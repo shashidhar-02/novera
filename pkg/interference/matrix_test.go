@@ -26,10 +26,12 @@ func TestMatrixModel_Evaluate(t *testing.T) {
 
 	// 2. Add ThroughputBatch workload to node
 	batchJob := &model.Workload{
-		ID:    "batch-1",
-		Class: model.ClassThroughputBatch,
+		ID:                 "batch-1",
+		Class:              model.ClassThroughputBatch,
+		CPURequestMillis:   1000,
+		MemoryRequestBytes: 1024 * 1024 * 1024,
 	}
-	node.ActiveWorkloads["batch-1"] = batchJob
+	_ = node.AssignWorkload(batchJob)
 
 	penaltyWithBatch, reasonsWithBatch := m.Evaluate(incomingLS, node)
 	if penaltyWithBatch < 30.0 {
@@ -48,11 +50,24 @@ func TestMatrixModel_Evaluate(t *testing.T) {
 
 	// 3. Batch incoming onto Batch node should have 0 penalty
 	incomingBatch := &model.Workload{
-		ID:    "batch-2",
-		Class: model.ClassThroughputBatch,
+		ID:                 "batch-2",
+		Class:              model.ClassThroughputBatch,
+		CPURequestMillis:   1000,
+		MemoryRequestBytes: 1024 * 1024 * 1024,
 	}
 	batchPenalty, _ := m.Evaluate(incomingBatch, node)
 	if batchPenalty != 0.0 {
 		t.Fatalf("expected 0.0 penalty for Batch co-locating with Batch, got %f", batchPenalty)
+	}
+
+	// 4. Nil safety checks
+	penNilWorkload, _ := m.Evaluate(nil, node)
+	if penNilWorkload != 0.0 {
+		t.Fatalf("expected 0.0 penalty for nil workload")
+	}
+
+	penNilNode, _ := m.Evaluate(incomingLS, nil)
+	if penNilNode != 0.0 {
+		t.Fatalf("expected 0.0 penalty for nil node")
 	}
 }

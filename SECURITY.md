@@ -31,3 +31,4 @@ If you discover a security vulnerability in ASTRA, please report it privately:
 - **Email:** `security@astra-orchestration.org` (or open a confidential GitHub Advisory)
 - **Response Timeline:** We aim to acknowledge receipt within 48 hours and provide an initial assessment within 5 business days.
 - Please do **not** open a public issue before the vulnerability has been triaged and patched.
+

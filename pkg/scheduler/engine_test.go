@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,7 +18,6 @@ func TestEngine_Filtering(t *testing.T) {
 		"large-node": model.NewNode("large-node", 8000, 8192*1024*1024), // 8 cores, 8 GB
 	}
 
-	// Workload requiring 2 cores (2000m)
 	w := &model.Workload{
 		ID:                 "large-workload",
 		Class:              model.ClassThroughputBatch,
@@ -43,11 +43,9 @@ func TestEngine_InterferenceSteering(t *testing.T) {
 	engine := NewEngine(DefaultConfig(), nil)
 	now := time.Now()
 
-	// Two nodes with identical capacity (4 cores, 16 GB)
 	nodeA := model.NewNode("node-a", 4000, 16*1024*1024*1024)
 	nodeB := model.NewNode("node-b", 4000, 16*1024*1024*1024)
 
-	// Node A already runs a heavy batch workload
 	batchW := &model.Workload{
 		ID:                 "batch-worker",
 		Class:              model.ClassThroughputBatch,
@@ -56,7 +54,6 @@ func TestEngine_InterferenceSteering(t *testing.T) {
 	}
 	_ = nodeA.AssignWorkload(batchW)
 
-	// Fresh Latency-Sensitive workload arriving
 	lsW := &model.Workload{
 		ID:                 "api-gateway",
 		Class:              model.ClassLatencySensitive,
@@ -74,7 +71,6 @@ func TestEngine_InterferenceSteering(t *testing.T) {
 		t.Fatalf("unexpected schedule error: %v", err)
 	}
 
-	// Engine should avoid Node A because of Batch interference penalty, selecting clean Node B
 	if decision.SelectedNodeID != "node-b" {
 		t.Fatalf("expected interference-aware steering to select clean node-b, selected: %s", decision.SelectedNodeID)
 	}
@@ -87,11 +83,10 @@ func TestEngine_StaleTelemetryFallback(t *testing.T) {
 
 	now := time.Now()
 	node := model.NewNode("node-1", 4000, 8*1024*1024*1024)
-	// Stale telemetry from 10 seconds ago
 	node.LastTelemetry = &model.NodeTelemetry{
 		NodeID:      "node-1",
 		CollectedAt: now.Add(-10 * time.Second),
-		CPUPressure: model.PSIPressure{SomeAvg10: 95.0}, // severe historical pressure
+		CPUPressure: model.PSIPressure{SomeAvg10: 95.0},
 	}
 
 	w := &model.Workload{
@@ -109,4 +104,91 @@ func TestEngine_StaleTelemetryFallback(t *testing.T) {
 	if !decision.TelemetryDegraded {
 		t.Fatalf("expected TelemetryDegraded flag to be true when telemetry is older than max age")
 	}
+}
+
+func TestEngine_AdversarialInputsAndEdgeCases(t *testing.T) {
+	engine := NewEngine(DefaultConfig(), nil)
+	now := time.Now()
+
+	// 1. Nil workload
+	if _, err := engine.Schedule(context.Background(), nil, map[string]*model.Node{"n": model.NewNode("n", 1000, 1000)}, now); err != ErrNilWorkload {
+		t.Fatalf("expected ErrNilWorkload, got: %v", err)
+	}
+
+	// 2. Empty nodes map
+	w := &model.Workload{
+		ID:                 "w1",
+		Class:              model.ClassLatencySensitive,
+		CPURequestMillis:   500,
+		MemoryRequestBytes: 1024,
+	}
+	if _, err := engine.Schedule(context.Background(), w, map[string]*model.Node{}, now); err != ErrNoRegisteredNodes {
+		t.Fatalf("expected ErrNoRegisteredNodes, got: %v", err)
+	}
+
+	// 3. Map containing nil Node pointers and nodes with zero/negative capacity
+	nodesWithBadData := map[string]*model.Node{
+		"nil-node":  nil,
+		"zero-node": model.NewNode("zero-node", 0, 0),
+		"good-node": model.NewNode("good-node", 4000, 4096*1024*1024),
+	}
+	decision, err := engine.Schedule(context.Background(), w, nodesWithBadData, now)
+	if err != nil {
+		t.Fatalf("unexpected error with bad nodes present: %v", err)
+	}
+	if decision.SelectedNodeID != "good-node" {
+		t.Fatalf("expected good-node to be selected, got: %s", decision.SelectedNodeID)
+	}
+
+	// 4. Context cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := engine.Schedule(ctx, w, nodesWithBadData, now); err != context.Canceled {
+		t.Fatalf("expected context.Canceled, got: %v", err)
+	}
+
+	// 5. Future clock-skew telemetry
+	goodNode := nodesWithBadData["good-node"]
+	goodNode.LastTelemetry = &model.NodeTelemetry{
+		NodeID:      "good-node",
+		CollectedAt: now.Add(2 * time.Hour), // Future clock skew
+	}
+	skewDecision, err := engine.Schedule(context.Background(), w, map[string]*model.Node{"good-node": goodNode}, now)
+	if err != nil {
+		t.Fatalf("unexpected schedule error: %v", err)
+	}
+	if !skewDecision.TelemetryDegraded {
+		t.Fatalf("expected clock-skewed telemetry to be degraded gracefully")
+	}
+}
+
+func TestEngine_ConcurrencyStress(t *testing.T) {
+	engine := NewEngine(DefaultConfig(), nil)
+	now := time.Now()
+
+	nodes := make(map[string]*model.Node)
+	for i := 0; i < 20; i++ {
+		id := string(rune('A' + i))
+		nodes[id] = model.NewNode(id, 8000, 32*1024*1024*1024)
+	}
+
+	var wg sync.WaitGroup
+	workers := 50
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			w := &model.Workload{
+				ID:                 string(rune('w' + idx)),
+				Class:              model.ClassLatencySensitive,
+				CPURequestMillis:   500,
+				MemoryRequestBytes: 1024 * 1024 * 1024,
+			}
+			dec, err := engine.Schedule(context.Background(), w, nodes, now)
+			if err != nil || dec == nil {
+				t.Errorf("worker %d failed schedule: %v", idx, err)
+			}
+		}(i)
+	}
+	wg.Wait()
 }

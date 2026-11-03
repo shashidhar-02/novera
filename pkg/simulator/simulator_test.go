@@ -34,3 +34,4 @@ func TestSimulator_DeterministicComparison(t *testing.T) {
 			astraReport.SLOViolations, baselineReport.SLOViolations)
 	}
 }
+

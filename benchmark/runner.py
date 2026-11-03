@@ -106,3 +106,4 @@ if __name__ == "__main__":
 
     print("\n" + md_content)
     print(f"[*] Benchmark data saved to {json_path} and {md_path}")
+

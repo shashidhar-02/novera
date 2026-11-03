@@ -94,13 +94,23 @@ ASTRA is **not** a Kubernetes clone, Docker clone, or LLM-based log assistant. I
 
 ---
 
+## Implementation Status & Roadmap
+
+| Subsystem / Tier | Status | Verification & Artifacts |
+|---|---|---|
+| **Stage 1: Core Engine & Simulator** | **COMPLETE & VERIFIED** | Deterministic simulation, multi-objective scoring, interference matrix, unit/adversarial tests, CI pipeline. |
+| **Stage 2: Linux Node Agent (cgroups/PSI/eBPF)** | **PLANNED ROADMAP** | Specification in [RFC-0001](rfcs/RFC-0001-architecture.md); probe implementation targeted for v0.2.0. |
+| **Stage 3: Kubernetes Scheduling Plugin** | **PLANNED ROADMAP** | K8s Scheduling Framework plugin targeted for v0.3.0. |
+
+---
+
 ## Operational Modes
 
 ASTRA is engineered across three decoupled execution tiers:
 
-1. **Simulator Mode:** Pure user-space deterministic simulation running on any OS (Linux, macOS, Windows) without requiring kernel privileges or container engines. Used for algorithmic verification, CI benchmarking, and regression analysis.
-2. **Linux Node Prototype:** Standalone control plane and node agent communicating over mTLS, collecting live metrics from Linux 5.8+ cgroups v2 and `/proc/pressure`.
-3. **Kubernetes Integration:** Deployed as a secondary scheduler or Scheduling Framework plugin (`PreScore`, `Score`) in standard Kubernetes clusters.
+1. **Simulator Mode (v0.1.0 - Current):** Pure user-space deterministic simulation running on any OS (Linux, macOS, Windows) without requiring kernel privileges or container engines. Used for algorithmic verification, CI benchmarking, adversarial testing, and regression analysis.
+2. **Linux Node Prototype (v0.2.0 - Roadmap):** Standalone control plane and node agent communicating over mTLS, collecting live metrics from Linux 5.8+ cgroups v2 (`/sys/fs/cgroup`) and PSI (`/proc/pressure`).
+3. **Kubernetes Integration (v0.3.0 - Roadmap):** Deployment as an out-of-tree secondary scheduler or upstream Kubernetes Scheduling Framework plugin (`Score`, `PreScore`, `Filter`).
 
 ---
 
@@ -191,3 +201,4 @@ astra/
 ## License
 
 ASTRA is licensed under the [Apache License, Version 2.0](LICENSE).
+

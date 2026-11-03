@@ -284,3 +284,4 @@ Where $\mathcal{M}_{\text{interf}}$ is the symmetric interference penalty matrix
 - **Latency Target:** Complete placement decision for 1,000 nodes in $< 10\text{ms}$.
 - **Throughput Target:** $> 500$ scheduling decisions per second on a single control-plane core.
 - **Overhead Budget:** Node agent CPU usage $< 1.0\%$ of a single core; memory footprint $< 32\text{MB}$.
+

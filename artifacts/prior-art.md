@@ -98,3 +98,4 @@ Below is the structured analysis of prior art, establishing exactly what ASTRA r
 2. **SLO-Aware Multi-Objective Scoring:** Mathematical scoring that minimizes predicted $p99$ tail latency violations while optimizing cluster resource compaction.
 3. **Graceful Fallback & Deterministic Safety Invariants:** Formal policy boundaries ensuring that stale, missing, or compromised agent telemetry falls back gracefully to standard capacity constraints without causing cascading cluster failures.
 4. **Standalone Portability:** A completely decoupled core engine capable of running in simulation mode, Linux standalone prototype mode, or full Kubernetes integration.
+
