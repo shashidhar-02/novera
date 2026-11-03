@@ -11,12 +11,12 @@ import (
 
 // CgroupCPUStat represents CPU throttling metrics from cgroups v2 cpu.stat.
 type CgroupCPUStat struct {
-	UsageUsec     uint64  `json:"usage_usec"`
-	UserUsec      uint64  `json:"user_usec"`
-	SystemUsec    uint64  `json:"system_usec"`
-	NrPeriods     uint64  `json:"nr_periods"`
-	NrThrottled   uint64  `json:"nr_throttled"`
-	ThrottledUsec uint64  `json:"throttled_usec"`
+	UsageUsec      uint64  `json:"usage_usec"`
+	UserUsec       uint64  `json:"user_usec"`
+	SystemUsec     uint64  `json:"system_usec"`
+	NrPeriods      uint64  `json:"nr_periods"`
+	NrThrottled    uint64  `json:"nr_throttled"`
+	ThrottledUsec  uint64  `json:"throttled_usec"`
 	ThrottledRatio float64 `json:"throttled_ratio"` // nr_throttled / nr_periods
 }
 
@@ -109,4 +109,3 @@ func ParseCPUStat(r io.Reader) (CgroupCPUStat, error) {
 
 	return stat, scanner.Err()
 }
-

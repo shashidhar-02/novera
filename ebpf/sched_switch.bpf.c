@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2026 ASTRA Authors

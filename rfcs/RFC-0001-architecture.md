@@ -15,6 +15,7 @@ Modern cloud orchestration frameworks (e.g., Kubernetes `kube-scheduler`, Nomad)
 $$\text{Allocatable}(N) = \text{Capacity}(N) - \sum_{W \in \text{Assigned}(N)} \text{Requests}(W)$$
 
 This abstraction assumes that declared requests accurately reflect runtime behavior and that workloads sharing a physical node are performance-isolated. In reality:
+
 1. **Dynamic Interference:** Co-located workloads contend for unmanaged hardware resources: L3 cache lines, memory bus bandwidth, CPU runqueue capacity, I/O queues, and socket-level interconnects.
 2. **Hidden Latency Stalls:** Latency-sensitive workloads experience tail latency degradation ($p99$ spikes of 300%–1000%) caused by CPU runqueue starvation (`sched_switch` wait delays) and cgroup CFS quota throttling, despite node CPU utilization remaining below 60%.
 3. **No Closed-Loop Feedback:** Standard schedulers operate as open-loop systems: once a workload is bound to a node, runtime performance degradation does not inform future placement decisions unless an out-of-memory (OOM) or eviction threshold is crossed.
@@ -24,6 +25,7 @@ This abstraction assumes that declared requests accurately reflect runtime behav
 ## 2. Goals & Non-Goals
 
 ### 2.1 Goals
+
 - **Closed-Loop Kernel Telemetry:** Ingest Linux cgroups v2, Pressure Stall Information (PSI), and eBPF runqueue metrics into a centralized cluster state with sub-second temporal resolution.
 - **Interference-Aware Scoring:** Evaluate candidate nodes using a composite score incorporating static capacity, measured subsystem pressure (CPU, memory, I/O), and workload co-location compatibility.
 - **SLO-Centric Objective Function:** Prioritize nodes that minimize the predicted probability of $p99$ tail latency violations for latency-sensitive (LS) workloads.
@@ -35,6 +37,7 @@ This abstraction assumes that declared requests accurately reflect runtime behav
   3. *Kubernetes Mode:* Plugin integration via the Kubernetes Scheduling Framework (`Score` / `Filter`).
 
 ### 2.2 Non-Goals
+
 - **Replacing the Linux Kernel Scheduler:** ASTRA is an orchestrator/cluster scheduler, not an in-kernel task scheduler (like CFS or EEVDF).
 - **Replacing Kubernetes:** ASTRA integrates with the Kubernetes control plane rather than reimplementing pods, services, or controllers.
 - **Unbounded Machine Learning in the Critical Path:** No non-deterministic LLM or deep neural network will be placed in the synchronous scheduling loop. Any heuristic or regression model must execute in $< 5\text{ms}$.
@@ -238,6 +241,7 @@ $$S_{\text{press}}(N) = \max\left(0.0, 100.0 - (\text{Penalty}_{\text{cpu}} + \t
 Measures the historical degradation penalty of co-scheduling workload class $C(W)$ on node $N$ alongside currently running classes:
 $$S_{\text{interf}}(N, W) = 100.0 - \sum_{W' \in \text{Active}(N)} \mathcal{M}_{\text{interf}}(C(W), C(W'))$$
 Where $\mathcal{M}_{\text{interf}}$ is the symmetric interference penalty matrix:
+
 - $\text{LS} \times \text{LS}$: Low penalty ($5.0$)
 - $\text{LS} \times \text{Batch}$: High penalty ($35.0$) — prevents batch CPU thrashing latency-sensitive p99
 - $\text{LS} \times \text{IO}$: High penalty ($30.0$) — prevents IO queue starvation
@@ -273,6 +277,7 @@ Where $\mathcal{M}_{\text{interf}}$ is the symmetric interference penalty matrix
 ## 8. Verification & Benchmarking Strategy
 
 ### 8.1 Verification (Testing Pyramid)
+
 1. **Unit Tests:**
    - 100% test coverage on candidate filtering logic, mathematical scoring formulas, and edge conditions (zero capacity, negative pressure, overflow).
 2. **Deterministic Simulation Tests:**
@@ -281,6 +286,7 @@ Where $\mathcal{M}_{\text{interf}}$ is the symmetric interference penalty matrix
    - Inject synthetic telemetry dropouts, clock skews, and corrupted payload frames to prove safety invariants hold.
 
 ### 8.2 Benchmarking Protocol
+
 - **Latency Target:** Complete placement decision for 1,000 nodes in $< 10\text{ms}$.
 - **Throughput Target:** $> 500$ scheduling decisions per second on a single control-plane core.
 - **Overhead Budget:** Node agent CPU usage $< 1.0\%$ of a single core; memory footprint $< 32\text{MB}$.

@@ -91,4 +91,3 @@ func ParsePSILines(r io.Reader) (model.PSIPressure, error) {
 
 	return psi, scanner.Err()
 }
-

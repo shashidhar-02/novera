@@ -118,4 +118,3 @@ func TestCollector_CollectOnce(t *testing.T) {
 		t.Errorf("expected runqueue 850.0 us, got %f", telemetry.RunqueueLatencyP99Us)
 	}
 }
-

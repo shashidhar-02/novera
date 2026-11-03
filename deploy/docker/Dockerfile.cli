@@ -1,0 +1,22 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.0" -o /bin/astra ./cmd/astra
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.0" -o /bin/simulator ./cmd/simulator
+
+# Minimal hardened distroless static runtime
+FROM gcr.io/distroless/static-debian12:nonroot
+
+WORKDIR /
+COPY --from=builder /bin/astra /bin/astra
+COPY --from=builder /bin/simulator /bin/simulator
+
+USER 10001:10001
+
+ENTRYPOINT ["/bin/astra"]
+CMD ["status"]

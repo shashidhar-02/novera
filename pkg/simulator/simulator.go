@@ -25,14 +25,14 @@ const (
 
 // ScenarioConfig configures the simulation run.
 type ScenarioConfig struct {
-	Seed              int64   `json:"seed"`
-	NodeCount         int     `json:"node_count"`
-	NodeCPUCores      int64   `json:"node_cpu_cores"`       // Cores per node (e.g., 8)
-	NodeMemoryGB      int64   `json:"node_memory_gb"`       // GB per node (e.g., 32)
-	WorkloadCount     int     `json:"workload_count"`       // Total workloads to schedule
-	RatioLatencySens  float64 `json:"ratio_latency_sens"`   // e.g. 0.40
-	RatioBatch        float64 `json:"ratio_batch"`          // e.g. 0.35
-	RatioIOIntensive  float64 `json:"ratio_io_intensive"`   // e.g. 0.25
+	Seed              int64         `json:"seed"`
+	NodeCount         int           `json:"node_count"`
+	NodeCPUCores      int64         `json:"node_cpu_cores"`     // Cores per node (e.g., 8)
+	NodeMemoryGB      int64         `json:"node_memory_gb"`     // GB per node (e.g., 32)
+	WorkloadCount     int           `json:"workload_count"`     // Total workloads to schedule
+	RatioLatencySens  float64       `json:"ratio_latency_sens"` // e.g. 0.40
+	RatioBatch        float64       `json:"ratio_batch"`        // e.g. 0.35
+	RatioIOIntensive  float64       `json:"ratio_io_intensive"` // e.g. 0.25
 	TelemetryInterval time.Duration `json:"telemetry_interval"`
 }
 
@@ -41,8 +41,8 @@ func DefaultScenario(seed int64) ScenarioConfig {
 	return ScenarioConfig{
 		Seed:              seed,
 		NodeCount:         6,
-		NodeCPUCores:      8,   // 8000m CPU
-		NodeMemoryGB:      32,  // 32768 MB
+		NodeCPUCores:      8,  // 8000m CPU
+		NodeMemoryGB:      32, // 32768 MB
 		WorkloadCount:     40,
 		RatioLatencySens:  0.40,
 		RatioBatch:        0.35,
@@ -53,18 +53,18 @@ func DefaultScenario(seed int64) ScenarioConfig {
 
 // MetricsReport captures comparative metrics from a completed simulation run.
 type MetricsReport struct {
-	Policy                 Policy  `json:"policy"`
-	Seed                   int64   `json:"seed"`
-	TotalWorkloads         int     `json:"total_workloads"`
-	PlacedWorkloads        int     `json:"placed_workloads"`
-	RejectedWorkloads      int     `json:"rejected_workloads"`
-	LatencySensWorkloads   int     `json:"latency_sens_workloads"`
-	SLOViolations          int     `json:"slo_violations"`
-	SLOViolationRate       float64 `json:"slo_violation_rate"` // %
-	AvgNodeCPUUtilization  float64 `json:"avg_node_cpu_utilization"` // %
-	AvgNodeMemUtilization  float64 `json:"avg_node_mem_utilization"` // %
-	AvgRunqueueLatencyUs   float64 `json:"avg_runqueue_latency_us"`
-	MaxRunqueueLatencyUs   float64 `json:"max_runqueue_latency_us"`
+	Policy                Policy  `json:"policy"`
+	Seed                  int64   `json:"seed"`
+	TotalWorkloads        int     `json:"total_workloads"`
+	PlacedWorkloads       int     `json:"placed_workloads"`
+	RejectedWorkloads     int     `json:"rejected_workloads"`
+	LatencySensWorkloads  int     `json:"latency_sens_workloads"`
+	SLOViolations         int     `json:"slo_violations"`
+	SLOViolationRate      float64 `json:"slo_violation_rate"`       // %
+	AvgNodeCPUUtilization float64 `json:"avg_node_cpu_utilization"` // %
+	AvgNodeMemUtilization float64 `json:"avg_node_mem_utilization"` // %
+	AvgRunqueueLatencyUs  float64 `json:"avg_runqueue_latency_us"`
+	MaxRunqueueLatencyUs  float64 `json:"max_runqueue_latency_us"`
 }
 
 // ClusterSimulator manages the deterministic environment.
@@ -95,16 +95,16 @@ func NewClusterSimulator(cfg ScenarioConfig) *ClusterSimulator {
 
 		if roll < cfg.RatioLatencySens {
 			class = model.ClassLatencySensitive
-			cpuMillis = 500 + int64(rnd.Intn(500)) // 500 - 1000m
+			cpuMillis = 500 + int64(rnd.Intn(500))            // 500 - 1000m
 			memBytes = int64(512+rnd.Intn(512)) * 1024 * 1024 // 512 - 1024 MB
 			slo = &model.SLOSpec{TargetP99Ms: 25.0 + float64(rnd.Intn(15))}
 		} else if roll < cfg.RatioLatencySens+cfg.RatioBatch {
 			class = model.ClassThroughputBatch
-			cpuMillis = 1500 + int64(rnd.Intn(1500)) // 1500 - 3000m
+			cpuMillis = 1500 + int64(rnd.Intn(1500))            // 1500 - 3000m
 			memBytes = int64(2048+rnd.Intn(2048)) * 1024 * 1024 // 2 - 4 GB
 		} else {
 			class = model.ClassIOIntensive
-			cpuMillis = 1000 + int64(rnd.Intn(1000)) // 1000 - 2000m
+			cpuMillis = 1000 + int64(rnd.Intn(1000))            // 1000 - 2000m
 			memBytes = int64(1024+rnd.Intn(2048)) * 1024 * 1024 // 1 - 3 GB
 		}
 
@@ -333,4 +333,3 @@ func (cs *ClusterSimulator) evaluatePerformance(policy Policy, placed, rejected,
 		MaxRunqueueLatencyUs:  maxRunqUs,
 	}
 }
-

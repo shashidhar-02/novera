@@ -22,4 +22,3 @@ func FuzzWorkloadJSONValidation(f *testing.F) {
 		}
 	})
 }
-

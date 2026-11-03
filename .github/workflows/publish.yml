@@ -1,0 +1,158 @@
+name: Publish Containers & Release Packages
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish-images:
+    name: Build & Push Multi-Arch Container Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Downcase Repository Name
+        id: repo_name
+        run: |
+          echo "IMAGE_PREFIX=ghcr.io/${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]' >> "$GITHUB_ENV"
+
+      - name: Determine Tags
+        id: meta
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            echo "TAG_LATEST=true" >> "$GITHUB_ENV"
+          else
+            TAG="sha-${GITHUB_SHA::7}"
+            echo "TAG_LATEST=true" >> "$GITHUB_ENV"
+          fi
+          echo "PRIMARY_TAG=${TAG}" >> "$GITHUB_ENV"
+
+      - name: Build and Push Scheduler Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.scheduler
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/novera-scheduler:${{ env.PRIMARY_TAG }}
+            ${{ env.IMAGE_PREFIX }}/novera-scheduler:latest
+
+      - name: Build and Push Node Agent Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.agent
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/novera-agent:${{ env.PRIMARY_TAG }}
+            ${{ env.IMAGE_PREFIX }}/novera-agent:latest
+
+      - name: Build and Push Operator CLI Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/novera-cli:${{ env.PRIMARY_TAG }}
+            ${{ env.IMAGE_PREFIX }}/novera-cli:latest
+
+  build-binaries:
+    name: Cross-Compile Binaries & Generate Checksums
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Cross-Compile Multi-Platform Binaries
+        run: |
+          mkdir -p dist
+          PLATFORMS=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
+          BINARIES=("astra" "astra-scheduler" "astra-agent" "simulator")
+          
+          VERSION="${GITHUB_REF_NAME}"
+          if [ -z "$VERSION" ] || [[ "$VERSION" != v* ]]; then
+            VERSION="v0.1.0"
+          fi
+
+          for PLATFORM in "${PLATFORMS[@]}"; do
+            OS="${PLATFORM%/*}"
+            ARCH="${PLATFORM#*/}"
+            EXT=""
+            if [ "$OS" == "windows" ]; then
+              EXT=".exe"
+            fi
+            
+            STAGE_DIR="dist/novera_${VERSION}_${OS}_${ARCH}"
+            mkdir -p "$STAGE_DIR"
+            
+            for BIN in "${BINARIES[@]}"; do
+              echo "Compiling $BIN for $OS/$ARCH..."
+              CGO_ENABLED=0 GOOS="$OS" GOARCH="$ARCH" go build \
+                -ldflags="-s -w -X main.version=${VERSION}" \
+                -o "$STAGE_DIR/${BIN}${EXT}" "./cmd/$BIN"
+            done
+            
+            # Package archive
+            cd dist
+            if [ "$OS" == "windows" ]; then
+              zip -r "novera_${VERSION}_${OS}_${ARCH}.zip" "novera_${VERSION}_${OS}_${ARCH}"
+            else
+              tar -czvf "novera_${VERSION}_${OS}_${ARCH}.tar.gz" "novera_${VERSION}_${OS}_${ARCH}"
+            fi
+            rm -rf "novera_${VERSION}_${OS}_${ARCH}"
+            cd ..
+          done
+
+      - name: Generate Checksums
+        run: |
+          cd dist
+          sha256sum * > sha256sum.txt
+          cat sha256sum.txt
+          cd ..
+
+      - name: Upload Binary Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: dist/*
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          name: Novera Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false

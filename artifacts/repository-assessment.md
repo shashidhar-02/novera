@@ -12,6 +12,7 @@
 This assessment audits the initial state of the `ASTRA` workspace at `d:\astra`. The mission is to establish a systems-level, open-source distributed scheduler and interference-mitigation engine (**ASTRA — Autonomous Systems Telemetry & Resource Allocation**).
 
 The project is governed by strict engineering principles:
+
 - No premature feature bloat or hollow "AI-wrapper" patterns.
 - No fabricated benchmark numbers or simulated production claims.
 - Rigorous architecture-first engineering (RFC-driven design).
@@ -74,17 +75,20 @@ To ensure rapid, reliable, and testable engineering despite the 8 GB host and no
 ```
 
 ### Stage 1: Deterministic Engine & Simulator
+
 - 100% portable Go implementation.
 - Zero external kernel or container runtime dependencies.
 - Simulates workload execution, burst profiles, CPU/Memory/IO resource starvation, and noisy-neighbor interference scenarios.
 - Deterministic verification with reproducible random seeds.
 
 ### Stage 2: Linux Telemetry & eBPF Subsystem
+
 - Developed using standard C / CO-RE (Compile Once – Run Everywhere) targeting Linux 5.8+.
 - Node Agent written in Go/Rust with fallback to standard `/proc/pressure` (PSI) and `/sys/fs/cgroup/` when eBPF is disabled or restricted.
 - Tested and verified in Linux CI environments (GitHub Actions Ubuntu 22.04/24.04 runners with full kernel access).
 
 ### Stage 3: Kubernetes Scheduling Framework Integration
+
 - Implement `Score`, `Filter`, `PreScore`, and `Reserve` plugins adhering to the upstream `k8s.io/kube-scheduler` plugin interfaces.
 - Safe fallback to default scheduler behavior in the event of missing or stale telemetry.
 

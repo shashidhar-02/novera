@@ -39,13 +39,13 @@ func DefaultConfig() Config {
 
 // CandidateScore records detailed scoring components for a candidate node.
 type CandidateScore struct {
-	NodeID             string   `json:"node_id"`
-	TotalScore         float64  `json:"total_score"`
-	CapacityScore      float64  `json:"capacity_score"`
-	PressureScore      float64  `json:"pressure_score"`
-	InterferenceScore  float64  `json:"interference_score"`
-	TelemetryDegraded  bool     `json:"telemetry_degraded"`
-	Reasons            []string `json:"reasons"`
+	NodeID            string   `json:"node_id"`
+	TotalScore        float64  `json:"total_score"`
+	CapacityScore     float64  `json:"capacity_score"`
+	PressureScore     float64  `json:"pressure_score"`
+	InterferenceScore float64  `json:"interference_score"`
+	TelemetryDegraded bool     `json:"telemetry_degraded"`
+	Reasons           []string `json:"reasons"`
 }
 
 // PlacementDecision documents an explainable scheduling choice.
