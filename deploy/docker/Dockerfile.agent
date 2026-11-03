@@ -1,19 +1,24 @@
-# Build stage
-FROM golang:1.23-alpine AS builder
+# syntax=docker/dockerfile:1
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.0" -o /bin/astra-agent ./cmd/astra-agent
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -ldflags="-s -w -X main.version=0.1.0" \
+    -o /app/astra-agent ./cmd/astra-agent
 
 # Minimal hardened distroless static runtime
 FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /
-COPY --from=builder /bin/astra-agent /bin/astra-agent
+COPY --from=builder /app/astra-agent /app/astra-agent
 
 USER 10001:10001
 
-ENTRYPOINT ["/bin/astra-agent"]
+ENTRYPOINT ["/app/astra-agent"]

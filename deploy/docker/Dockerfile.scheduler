@@ -1,20 +1,25 @@
-# Build stage
-FROM golang:1.23-alpine AS builder
+# syntax=docker/dockerfile:1
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.0" -o /bin/astra-scheduler ./cmd/astra-scheduler
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -ldflags="-s -w -X main.version=0.1.0" \
+    -o /app/astra-scheduler ./cmd/astra-scheduler
 
 # Minimal hardened distroless static runtime
 FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /
-COPY --from=builder /bin/astra-scheduler /bin/astra-scheduler
+COPY --from=builder /app/astra-scheduler /app/astra-scheduler
 
 USER 10001:10001
 EXPOSE 8080 10259
 
-ENTRYPOINT ["/bin/astra-scheduler"]
+ENTRYPOINT ["/app/astra-scheduler"]

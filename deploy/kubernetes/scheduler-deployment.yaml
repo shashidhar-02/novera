@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: astra-scheduler
-          image: ghcr.io/shashidhar-02/novera-scheduler:v0.1.0
+          image: ghcr.io/shashidhar-02/novera/scheduler:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

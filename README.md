@@ -6,8 +6,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/shashidhar-02/novera.svg)](https://pkg.go.dev/github.com/shashidhar-02/novera)
 [![Go Report Card](https://goreportcard.com/badge/github.com/shashidhar-02/novera)](https://goreportcard.com/report/github.com/shashidhar-02/novera)
 [![Architecture RFC](https://img.shields.io/badge/RFC-0001--Architecture-orange.svg)](rfcs/RFC-0001-architecture.md)
-[![GHCR Scheduler](https://img.shields.io/badge/GHCR-novera--scheduler-blue?logo=docker)](https://github.com/shashidhar-02/novera/pkgs/container/novera-scheduler)
-[![GHCR Agent](https://img.shields.io/badge/GHCR-novera--agent-blue?logo=docker)](https://github.com/shashidhar-02/novera/pkgs/container/novera-agent)
+[![GHCR Scheduler](https://img.shields.io/badge/GHCR-novera%2Fscheduler-blue?logo=docker)](https://github.com/shashidhar-02/novera/pkgs/container/novera%2Fscheduler)
+[![GHCR Agent](https://img.shields.io/badge/GHCR-novera%2Fagent-blue?logo=docker)](https://github.com/shashidhar-02/novera/pkgs/container/novera%2Fagent)
 
 > **A Linux-native, eBPF-aware, SLO-driven distributed scheduler and workload interference mitigation engine.**
 
@@ -199,15 +199,15 @@ Production-ready, multi-arch container images are built and published to the **G
 
 | Component | Image Reference | Target Platforms | Security Profile |
 |---|---|---|---|
-| **Scheduler** | `ghcr.io/shashidhar-02/novera-scheduler:latest` | `linux/amd64`, `linux/arm64` | Distroless Non-Root (UID 10001) |
-| **Node Agent** | `ghcr.io/shashidhar-02/novera-agent:latest` | `linux/amd64`, `linux/arm64` | `CAP_BPF`, `CAP_PERFMON` |
-| **Operator CLI** | `ghcr.io/shashidhar-02/novera-cli:latest` | `linux/amd64`, `linux/arm64` | Distroless Non-Root (UID 10001) |
+| **Scheduler** | `ghcr.io/shashidhar-02/novera/scheduler:latest` | `linux/amd64`, `linux/arm64` | Distroless Non-Root (UID 10001) |
+| **Node Agent** | `ghcr.io/shashidhar-02/novera/agent:latest` | `linux/amd64`, `linux/arm64` | `CAP_BPF`, `CAP_PERFMON` |
+| **Operator CLI** | `ghcr.io/shashidhar-02/novera/cli:latest` | `linux/amd64`, `linux/arm64` | Distroless Non-Root (UID 10001) |
 
 ### Pull and Inspect via Docker / Podman
 ```bash
-docker pull ghcr.io/shashidhar-02/novera-scheduler:latest
-docker pull ghcr.io/shashidhar-02/novera-agent:latest
-docker pull ghcr.io/shashidhar-02/novera-cli:latest
+docker pull ghcr.io/shashidhar-02/novera/scheduler:latest
+docker pull ghcr.io/shashidhar-02/novera/agent:latest
+docker pull ghcr.io/shashidhar-02/novera/cli:latest
 ```
 
 ---
