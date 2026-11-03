@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: astra-node-agent
+  namespace: astra-system
+  labels:
+    app.kubernetes.io/name: astra-node-agent
+    app.kubernetes.io/part-of: astra
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: astra-node-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: astra-node-agent
+    spec:
+      serviceAccountName: astra-scheduler
+      hostPID: true # Justified: Required to map container PIDs to cgroups v2 hierarchy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: node-agent
+          image: ghcr.io/astra-orchestration/astra-agent:v0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - BPF     # eBPF map loading and tracepoint attach (Linux 5.8+)
+                - PERFMON # Performance event monitoring
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: sys-cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+            - name: proc-pressure
+              mountPath: /proc/pressure
+              readOnly: true
+      volumes:
+        - name: sys-cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+        - name: proc-pressure
+          hostPath:
+            path: /proc/pressure

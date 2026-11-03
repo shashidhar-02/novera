@@ -146,3 +146,4 @@ func TestNodeTelemetry_StalenessAndClockSkew(t *testing.T) {
 		t.Fatalf("zero-value telemetry must be stale")
 	}
 }
+
